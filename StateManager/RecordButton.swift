@@ -8,8 +8,13 @@
 import Foundation
 import UIKit
 
-public enum RecordButtonState : Int {
-    case Recording, Idle, Hidden;
+enum RecordButtonState : Int {
+    case Standby // 0
+    case RecordingStarted // 1
+    case RecordingLongEnough // 2
+    case Finished // 3
+    case MutedDuringPlayBack
+    case Failed
 }
 
 class RecordButton : UIButton {
@@ -29,19 +34,27 @@ class RecordButton : UIButton {
     /// Closes the circle and hides when the RecordButton is finished
     var closeWhenFinished: Bool = false
     
-    var buttonState : RecordButtonState = .Idle {
+    var buttonState : RecordButtonState = .Standby {
         didSet {
-            switch buttonState {
-            case .Idle:
+            switch (oldValue, buttonState) {
+            case (.Finished, .Standby):
                 self.alpha = 1.0
                 currentProgress = 0
                 setProgress(0)
                 setRecording(false)
-            case .Recording:
+            case .RecordingStarted:
                 self.alpha = 1.0
                 setRecording(true)
-            case .Hidden:
+            case .MutedDuringPlayBack:
                 self.alpha = 0
+            case .RecordingLongEnough:
+                
+                finishingRecording()
+            case .Finished:
+                resetButtonState()
+            default:
+                //print("oldValue: \(oldValue.hashValue), state: \(state.hashValue)")
+                assert(false, "OOPS!!!")
             }
         }
         
@@ -187,7 +200,7 @@ class RecordButton : UIButton {
     
     
     func didTouchDown(){
-        self.buttonState = .Recording
+        self.buttonState = .RecordingStarted
     }
     
     func didTouchUp() {
@@ -195,13 +208,13 @@ class RecordButton : UIButton {
             self.setProgress(1)
             
             UIView.animateWithDuration(0.3, animations: {
-                self.buttonState = .Hidden
+                self.buttonState = .MutedDuringPlayBack
                 }, completion: { completion in
                     self.setProgress(0)
                     self.currentProgress = 0
             })
         } else {
-            self.buttonState = .Idle
+            self.buttonState = .Standby
         }
     }
     
@@ -215,6 +228,12 @@ class RecordButton : UIButton {
         progressLayer.strokeEnd = newProgress
     }
     
+    func finishingRecording(){
+        self.buttonState = .Finished
+    }
     
+    func resetButtonState() {
+        self.buttonState = .Standby
+    }
 }
 
